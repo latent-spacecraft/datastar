@@ -9,7 +9,7 @@
 
 ![DataStar screenshot](screenshot.png)
 
-*A powerful, multidimensional data visualization platform developed by LATENT•SPACECRAFT, inspired by the artwork of Michael Okuda*
+*A powerful, multidimensional data visualization platform developed by LATENT•SPACECRAFT, inspired by Michael Okuda and Vintage Audio*
 
 </div>
 
