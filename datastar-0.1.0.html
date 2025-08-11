@@ -1,0 +1,2430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DataStar 0.1 | LATENT•SPACECRAFT</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        :root {
+            --primary-orange: #e88d34;
+            --primary-lilac: #9799fe;
+            --secondary-lavender: #d099d0;
+            --accent-yellow: #efa937;
+            --accent-rose: #cd5f5e;
+            --bg-dark: #000000;
+            --bg-panel: #000000;
+            --text-primary: #e88d34;
+            --text-secondary: #fc5f2c;
+            --grid-color: #333333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        @font-face {
+            font-family: 'UIFont';
+            src: url('twoweekendssans-regular.woff') format('woff');
+        }
+
+        body {
+            font-family: 'UIFont', 'Orbitron', monospace;
+            background: var(--bg-dark);
+            /* Minimum height to fill viewport */
+            min-height: 100vh;
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .terminal-grid {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.2;
+            background-image: 
+                linear-gradient(var(--primary-orange), 1px, transparent 1px),
+                linear-gradient(90deg, var(--primary-orange), 1px, transparent 1px);
+            background-size: 128px 128px 20px;
+            z-index: -1;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: 300px 1fr 350px;
+            grid-template-rows: 60px 1fr 50px;
+            height: 100vh;
+            gap: 5px;
+        }
+        
+        .header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .logo {
+            font-size: 28px;
+            font-weight: 1500;
+            font-kerning: normal;
+
+            z-index: 1;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--primary-lilac);
+            margin-left: 10px;
+            font-weight: 400;
+        }
+        
+        .status-bar {
+            grid-column: 1 / -1;
+            background: var(--bg-panel);
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            font-size: 12px;
+            border-top: 2px solid var(--primary-lilac);
+        }
+        
+        .control-panel {
+            background: var(--bg-panel);
+            border: 2px solid var(--primary-orange);
+            border-radius: 8px;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .viewport {
+            background: var(--bg-dark);
+            border: 2px solid var(--text-primary);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .data-panel {
+            background: var(--bg-panel);
+            min-width: 20%;
+            border: 2px solid var(--text-primary);
+            border-radius: 8px;
+            color: var(--accent-rose);
+            padding: 15px;
+            overflow-y: auto;
+        }
+        
+        .panel-title {
+            color: var(--primary-lilac);
+            font-size: 12px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--primary-lilac);
+            padding-bottom: 5px;
+        }
+        
+        .drop-zone {
+            border: 3px solid var(--secondary-lavender);
+            color: var(--secondary-lavender);
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            background: rgba(0,255,255,0.05);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .drop-zone:hover,
+        .drop-zone.drag-over {
+            background: var(--secondary-lavender);
+            border-color: var(--secondary-lavender);
+            color: var(--bg-dark);
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        .control-label {
+            color: var(--accent-yellow);
+            font-size: 12px;
+            margin-bottom: 8px;
+            display: block;
+            text-transform: uppercase;
+        }
+        
+        .control-select,
+        .control-input {
+            width: 100%;
+            padding: 8px;
+            background: var(--bg-dark);
+            border: 1px solid var(--accent-yellow);
+            border-radius: 4px;
+            color: var(--accent-rose);
+            font-family: inherit;
+            font-size: 12px;
+        }
+        
+        .control-checkbox {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .control-checkbox input {
+            margin-right: 8px;
+            accent-color: var(--primary-orange);
+        }
+        
+        .viz-mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 15px;
+        }
+        
+        .viz-button {
+            background: var(--bg-dark);
+            border: 2px solid var(--accent-rose);
+            color: var(--accent-rose);
+            padding: 12px 8px;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+        
+        .viz-button:hover {
+            background: var(--accent-rose);
+            color: var(--bg-dark);
+        }
+        
+        .viz-button.active {
+            background: var(--accent-rose);
+            border-color: var(--accent-rose);
+            color: var(--bg-dark);
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .export-btn {
+            flex: 1;
+            background: var(--accent-rose);
+            border: none;
+            color: var(--bg-dark);
+            padding: 10px;
+            font-family: inherit;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            border-radius: 4px;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+        
+        .export-btn:hover {
+            background: var(--secondary-lavender);
+        }
+        
+        .data-preview {
+            background: var(--bg-dark);
+            color: var(--secondary-lavender);
+            border: 1px solid var(--secondary-lavender);
+            border-radius: 4px;
+            padding: 10px;
+            font-size: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .canvas-container {
+            width: 100%;
+            height: 100%;
+            position: relative;
+        }
+        
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: var(--secondary-lavender);
+            font-size: 18px;
+            text-align: center;
+        }
+        
+        .loading::after {
+            content: '';
+            display: block;
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--bg-panel);
+            border-top: 3px solid var(--secondary-lavender);
+            border-radius: 50%;
+            animation: spin 1.0s linear infinite;
+            margin: 10px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .dimension-list {
+            overflow-y: auto;
+            padding: 10px;
+            background: var(--bg-dark);
+            border: 1px solid var(--secondary-lavender);
+            border-radius: 4px;
+            padding: 8px;
+        }
+        
+        .scanlines {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.05;
+            background-image: 
+                linear-gradient(#ffb000 1px, transparent 1px),
+                linear-gradient(90deg, #ffb000 1px, transparent 1px);
+            background-size: 10px 10px;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+
+<body>
+    
+    <div class="main-container">
+        <div class="header">
+            <div class="logo">DATASTAR</div>
+            <div class="subtitle">[MULTIDIMENSIONAL DATA ANALYZER]</div>
+            <div style="color: white; font-weight: 400; font-size: 10px; margin-left: auto;">LATENT<span style="font-family: Arial, Helvetica, sans-serif; font-size: xx-large; vertical-align: middle; color: var(--accent-rose);">•</span>SPACECRAFT</div>
+        </div>
+        
+        <div class="control-panel">
+            <div class="panel-title">Data Input</div>
+            <div class="drop-zone" id="dropZone">
+                <div style="font-size: 14px; margin-bottom: 5px;">DROP CSV FILE HERE:<br>
+                    <span style="font-size: 10px;">FIRST ROW MUST CONTAIN HEADERS, DATA MUST BE NUMERIC OR CATEGORICAL</span>
+                </div>
+                <input type="file" id="fileInput" accept=".csv" style="display: none;">
+            </div>
+            
+            <div class="panel-title">Visualization Mode</div>
+            <div class="viz-mode-buttons">
+                <button class="viz-button active" data-mode="2d">2D Plot</button>
+                <button class="viz-button" data-mode="2d-array">2D Array</button>
+                <button class="viz-button" data-mode="3d">3D Plot</button>
+                <button class="viz-button" data-mode="4d">4D Anim</button>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">X Dimension</label>
+                <select class="control-select" id="xDimension">
+                    <option>Select dimension...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Y Dimension</label>
+                <select class="control-select" id="yDimension">
+                    <option>Select dimension...</option>
+                </select>
+            </div>
+            
+            <div class="control-group" id="zDimensionGroup" style="display: none;">
+                <label class="control-label">Z Dimension</label>
+                <select class="control-select" id="zDimension">
+                    <option>Select dimension...</option>
+                </select>
+            </div>
+            
+            <div class="control-group" id="timeDimensionGroup" style="display: none;">
+                <label class="control-label">Time (Frames)</label>
+                <select class="control-select" id="timeDimension">
+                    <option>Select dimension...</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Color</label>
+                <select class="control-select" id="colorDimension">
+                    <option>Default (Z-based)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label class="control-label">Size</label>
+                <select class="control-select" id="sizeDimension">
+                    <option>Default (uniform)</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <div class="control-checkbox">
+                    <input type="checkbox" id="autoRotate" checked>
+                    <label class="control-label" for="autoRotate">AUTOROTATE (3D/4D)</label>
+                </div>
+            </div>
+            
+            <div class="control-group" id="animationSpeedGroup" style="display: none;">
+                <label class="control-label">4D Animation Speed</label>
+                <input type="range" class="control-select" id="animationSpeed" min="0.01" max="5.0" step="0.01" value="1.0" style="width: 100%;">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-secondary); margin-top: 5px;">
+                    <span>0.01s</span>
+                    <span id="speedDisplay">1.0s</span>
+                    <span>5.0s</span>
+                </div>
+            </div>
+            
+            <div class="panel-title">Data Filters</div>
+            <div id="dataFilters" style="display: none;">
+                <div style="font-size: 10px; color: var(--primary-lilac); margin-bottom: 10px;">
+                    Adjust ranges to filter data points
+                </div>
+                <div id="filterSliders"></div>
+            </div>
+            
+            <div class="panel-title">Export Options</div>
+            <div class="export-buttons">
+                <button class="export-btn" id="exportPNG">PNG</button>
+                <button class="export-btn" id="exportMesh">3D Mesh</button>
+                <button class="export-btn" id="exportGIF" style="display: none;">GIF</button>
+                <button class="export-btn" id="exportFilteredCSV">Filtered CSV</button>
+            </div>
+        </div>
+        
+        <div class="viewport">
+            <div class="scanlines"></div>
+            <div class="canvas-container" id="canvasContainer">
+                <div class="loading" id="loadingIndicator" style="display: none;">
+                    INITIALIZING VISUAL MATRIX
+                </div>
+            </div>
+        </div>
+        
+        <div class="data-panel">
+            <div class="panel-title">Data Preview</div>
+            <div class="data-preview" id="dataPreview">
+                NO DATA LOADED. DROP A CSV FILE TO BEGIN.
+            </div>
+            
+            <div class="panel-title" style="margin-top: 20px;">DIMENSIONS</div>
+            <div class="dimension-list" id="dimensionList">
+                <div style="color: var(--secondary-lavender); font-size: 11px;">
+                    AVAILABLE DIMENSIONS WILL APPEAR HERE.
+                </div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <span id="statusText">SYSTEM READY - AWAITING DATA INPUT</span>
+        </div>
+    </div>
+
+    <script>
+        class DropViz {
+            constructor() {
+                this.data = null;
+                this.headers = [];
+                this.currentMode = '2d';
+                this.scene = null;
+                this.camera = null;
+                this.renderer = null;
+                this.animationId = null;
+                this.animate4DTimeout = null;
+                
+                // Manual 3D controls
+                this.isMouseDown = false;
+                this.mouseX = 0;
+                this.mouseY = 0;
+                this.cameraRotationX = 0;
+                this.cameraRotationY = 0;
+                this.cameraDistance = 16;
+                
+                this.init();
+            }
+            
+            init() {
+                this.setupEventListeners();
+                this.initializeThreeJS();
+                this.updateStatus('SYSTEM READY - AWAITING DATA INPUT');
+            }
+            
+            setupEventListeners() {
+                const dropZone = document.getElementById('dropZone');
+                const fileInput = document.getElementById('fileInput');
+                
+                // Drag and drop events
+                dropZone.addEventListener('click', () => fileInput.click());
+                dropZone.addEventListener('dragover', this.handleDragOver.bind(this));
+                dropZone.addEventListener('dragleave', this.handleDragLeave.bind(this));
+                dropZone.addEventListener('drop', this.handleDrop.bind(this));
+                
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+                
+                // Visualization mode buttons
+                document.querySelectorAll('.viz-button').forEach(btn => {
+                    btn.addEventListener('click', this.handleModeChange.bind(this));
+                });
+                
+                // Dimension selectors
+                document.getElementById('xDimension').addEventListener('change', this.updateVisualization.bind(this));
+                document.getElementById('yDimension').addEventListener('change', this.updateVisualization.bind(this));
+                document.getElementById('zDimension').addEventListener('change', this.updateVisualization.bind(this));
+                document.getElementById('timeDimension').addEventListener('change', this.updateVisualization.bind(this));
+                document.getElementById('colorDimension').addEventListener('change', this.updateVisualization.bind(this));
+                document.getElementById('sizeDimension').addEventListener('change', this.updateVisualization.bind(this));
+                
+                // Animation speed slider
+                document.getElementById('animationSpeed').addEventListener('input', this.updateAnimationSpeed.bind(this));
+                
+                // Export buttons
+                document.getElementById('exportPNG').addEventListener('click', this.exportPNG.bind(this));
+                document.getElementById('exportMesh').addEventListener('click', this.exportMesh.bind(this));
+                document.getElementById('exportGIF').addEventListener('click', this.exportGIF.bind(this));
+                document.getElementById('exportFilteredCSV').addEventListener('click', this.exportFilteredCSV.bind(this));
+                
+                // 3D mouse controls
+                this.setup3DControls();
+            }
+            
+            setup3DControls() {
+                const canvas = document.querySelector('canvas');
+                if (!canvas) return;
+                
+                // Mouse events
+                canvas.addEventListener('mousedown', this.onMouseDown.bind(this));
+                canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
+                canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
+                canvas.addEventListener('wheel', this.onMouseWheel.bind(this));
+                
+                // Touch events for mobile
+                canvas.addEventListener('touchstart', this.onTouchStart.bind(this));
+                canvas.addEventListener('touchmove', this.onTouchMove.bind(this));
+                canvas.addEventListener('touchend', this.onTouchEnd.bind(this));
+                
+                // Prevent context menu
+                canvas.addEventListener('contextmenu', e => e.preventDefault());
+            }
+            
+            onMouseDown(e) {
+                if (this.currentMode !== '3d' && this.currentMode !== '4d' && this.currentMode !== '2d-array') return;
+                this.isMouseDown = true;
+                this.mouseX = e.clientX;
+                this.mouseY = e.clientY;
+                e.preventDefault();
+            }
+            
+            onMouseMove(e) {
+                if (!this.isMouseDown || (this.currentMode !== '3d' && this.currentMode !== '4d' && this.currentMode !== '2d-array')) return;
+                
+                const deltaX = e.clientX - this.mouseX;
+                const deltaY = e.clientY - this.mouseY;
+                
+                this.cameraRotationY += deltaX * 0.01;
+                this.cameraRotationX += deltaY * 0.01;
+                
+                // Clamp X rotation
+                this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
+                
+                this.mouseX = e.clientX;
+                this.mouseY = e.clientY;
+                
+                this.updateCameraPosition();
+                e.preventDefault();
+            }
+            
+            onMouseUp(e) {
+                this.isMouseDown = false;
+            }
+            
+            onMouseWheel(e) {
+                if (this.currentMode !== '3d' && this.currentMode !== '4d' && this.currentMode !== '2d-array') return;
+                
+                this.cameraDistance += e.deltaY * 0.01;
+                this.cameraDistance = Math.max(2, Math.min(50, this.cameraDistance));
+                
+                this.updateCameraPosition();
+                e.preventDefault();
+            }
+            
+            onTouchStart(e) {
+                if (e.touches.length === 1) {
+                    this.isMouseDown = true;
+                    this.mouseX = e.touches[0].clientX;
+                    this.mouseY = e.touches[0].clientY;
+                }
+                e.preventDefault();
+            }
+            
+            onTouchMove(e) {
+                if (e.touches.length === 1 && this.isMouseDown) {
+                    const deltaX = e.touches[0].clientX - this.mouseX;
+                    const deltaY = e.touches[0].clientY - this.mouseY;
+                    
+                    this.cameraRotationY += deltaX * 0.01;
+                    this.cameraRotationX += deltaY * 0.01;
+                    
+                    this.cameraRotationX = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.cameraRotationX));
+                    
+                    this.mouseX = e.touches[0].clientX;
+                    this.mouseY = e.touches[0].clientY;
+                    
+                    this.updateCameraPosition();
+                }
+                e.preventDefault();
+            }
+            
+            onTouchEnd(e) {
+                this.isMouseDown = false;
+            }
+            
+            updateCameraPosition() {
+                if (!this.camera) return;
+                
+                const x = Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX) * this.cameraDistance;
+                const y = Math.sin(this.cameraRotationX) * this.cameraDistance;
+                const z = Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX) * this.cameraDistance;
+                
+                this.camera.position.set(x, y, z);
+                this.camera.lookAt(this.scene.position);
+            }
+            
+            updateAnimationSpeed() {
+                const speedSlider = document.getElementById('animationSpeed');
+                const speedDisplay = document.getElementById('speedDisplay');
+                speedDisplay.textContent = `${speedSlider.value}s`;
+            }
+            
+            handleDragOver(e) {
+                e.preventDefault();
+                e.currentTarget.classList.add('drag-over');
+            }
+            
+            handleDragLeave(e) {
+                e.currentTarget.classList.remove('drag-over');
+            }
+            
+            handleDrop(e) {
+                e.preventDefault();
+                e.currentTarget.classList.remove('drag-over');
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    this.processFile(files[0]);
+                }
+            }
+            
+            handleFileSelect(e) {
+                const files = e.target.files;
+                if (files.length > 0) {
+                    this.processFile(files[0]);
+                }
+            }
+            
+            processFile(file) {
+                if (!file.name.toLowerCase().endsWith('.csv')) {
+                    this.updateStatus('ERROR: INVALID FILE FORMAT - CSV REQUIRED');
+                    return;
+                }
+                
+                this.updateStatus('PROCESSING DATA MATRIX...');
+                this.showLoading(true);
+                
+                Papa.parse(file, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: (results) => {
+                        this.data = results.data;
+                        this.headers = results.meta.fields;
+                        this.originalData = [...results.data]; // Store original data for filtering
+                        this.populateDimensionSelectors();
+                        this.initializeDataFilters();
+                        this.updateDataPreview();
+                        this.showLoading(false);
+                        this.updateStatus(`DATA LOADED: ${this.data.length} RECORDS, ${this.headers.length} DIMENSIONS`);
+                    },
+                    error: (error) => {
+                        this.updateStatus('ERROR: DATA PARSING FAILED');
+                        this.showLoading(false);
+                    }
+                });
+            }
+            
+            populateDimensionSelectors() {
+                const selectors = ['xDimension', 'yDimension', 'zDimension', 'timeDimension'];
+                
+                selectors.forEach(selectorId => {
+                    const select = document.getElementById(selectorId);
+                    select.innerHTML = '<option>Select dimension...</option>';
+                    
+                    this.headers.forEach(header => {
+                        const option = document.createElement('option');
+                        option.value = header;
+                        option.textContent = header;
+                        select.appendChild(option);
+                    });
+                });
+                
+                // Populate color and size selectors with default options
+                const colorSelect = document.getElementById('colorDimension');
+                const sizeSelect = document.getElementById('sizeDimension');
+                
+                colorSelect.innerHTML = '<option value="">Default (Z-based)</option>';
+                sizeSelect.innerHTML = '<option value="">Default (uniform)</option>';
+                
+                this.headers.forEach(header => {
+                    const colorOption = document.createElement('option');
+                    colorOption.value = header;
+                    colorOption.textContent = header;
+                    colorSelect.appendChild(colorOption);
+                    
+                    const sizeOption = document.createElement('option');
+                    sizeOption.value = header;
+                    sizeOption.textContent = header;
+                    sizeSelect.appendChild(sizeOption);
+                });
+                
+                // Auto-select first two dimensions
+                if (this.headers.length >= 2) {
+                    document.getElementById('xDimension').value = this.headers[0];
+                    document.getElementById('yDimension').value = this.headers[1];
+                }
+                
+                this.updateDimensionList();
+                this.updateVisualization();
+            }
+            
+            updateDimensionList() {
+                const dimensionList = document.getElementById('dimensionList');
+                dimensionList.innerHTML = '';
+                
+                this.headers.forEach((header, index) => {
+                    const div = document.createElement('div');
+                    div.style.cssText = 'padding: 4px; border-bottom: 1px solid #333; font-size: 11px;';
+                    
+                    const sampleValue = this.data[0] ? this.data[0][header] : 'N/A';
+                    const dataType = typeof sampleValue === 'number' ? 'NUMERIC' : 'CATEGORICAL';
+                    
+                    div.innerHTML = `
+                        <span style="color: var(--primary-orange);">${index + 1}.</span> 
+                        <span style="color: var(--text-primary);">${header}</span>
+                        <span style="color: var(--text-secondary); float: right;">${dataType}</span>
+                    `;
+                    dimensionList.appendChild(div);
+                });
+            }
+            
+            updateDataPreview() {
+                const preview = document.getElementById('dataPreview');
+                if (!this.data || this.data.length === 0) {
+                    preview.textContent = 'No data available';
+                    return;
+                }
+                
+                let previewText = 'HEADERS:\n';
+                previewText += this.headers.join(' ; ') + '\n\n';
+                previewText += 'SAMPLE DATA (first 5 rows):\n';
+                
+                for (let i = 0; i < Math.min(5, this.data.length); i++) {
+                    const row = this.headers.map(header => {
+                        let value = this.data[i][header];
+                        if (typeof value === 'number') {
+                            value = value.toFixed(2);
+                        }
+                        return String(value).substring(0, 8);
+                    });
+                    previewText += row.join(' ; ') + '\n';
+                }
+                
+                preview.textContent = previewText;
+            }
+            
+            initializeDataFilters() {
+                const filterContainer = document.getElementById('filterSliders');
+                const filtersDiv = document.getElementById('dataFilters');
+                
+                filterContainer.innerHTML = '';
+                this.dataFilters = {};
+                
+                this.headers.forEach(header => {
+                    const columnData = this.processDataDimension(this.originalData, header);
+                    
+                    if (columnData.type === 'numerical') {
+                        // Create filter slider for numerical data
+                        const filterDiv = document.createElement('div');
+                        filterDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border: 1px solid var(--grid-color); border-radius: 4px;';
+                        
+                        filterDiv.innerHTML = `
+                            <div style="font-size: 10px; color: var(--text-primary); margin-bottom: 4px;">${header}</div>
+                            <div style="display: flex; align-items: center; gap: 5px; width: 100%; box-sizing: border-box;">
+                                <input type="range" id="filter_${header}_min" min="${columnData.min}" max="${columnData.max}"
+                                    value="${columnData.min}" step="${(columnData.max - columnData.min) / 100}"
+                                    style="
+                                        flex: 1; 
+                                        height: 20px; 
+                                        width: 0; 
+                                        min-width: 0;
+                                        -webkit-appearance: none;
+                                        appearance: none;
+                                        background: transparent;
+                                        outline: none;
+                                    ">
+                                <input type="range" id="filter_${header}_max" min="${columnData.min}" max="${columnData.max}"
+                                    value="${columnData.max}" step="${(columnData.max - columnData.min) / 100}"
+                                    style="
+                                        flex: 1; 
+                                        height: 20px; 
+                                        width: 0; 
+                                        min-width: 0;
+                                        -webkit-appearance: none;
+                                        appearance: none;
+                                        background: transparent;
+                                        outline: none;
+                                    ">
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-top: 2px;">
+                                <span id="filter_${header}_min_val">${columnData.min.toFixed(1)}</span>
+                                <span id="filter_${header}_max_val">${columnData.max.toFixed(1)}</span>
+                            </div>
+                        `;
+                        
+                        filterContainer.appendChild(filterDiv);
+                        
+                        // Store filter info
+                        this.dataFilters[header] = {
+                            type: 'numerical',
+                            min: columnData.min,
+                            max: columnData.max,
+                            currentMin: columnData.min,
+                            currentMax: columnData.max
+                        };
+                        
+                        // Add event listeners
+                        document.getElementById(`filter_${header}_min`).addEventListener('input', (e) => {
+                            this.updateFilter(header, 'min', parseFloat(e.target.value));
+                        });
+                        
+                        document.getElementById(`filter_${header}_max`).addEventListener('input', (e) => {
+                            this.updateFilter(header, 'max', parseFloat(e.target.value));
+                        });
+                        
+                    } else if (columnData.type === 'categorical') {
+                        // Create checkbox filters for categorical data
+                        const filterDiv = document.createElement('div');
+                        filterDiv.style.cssText = 'margin-bottom: 12px; padding: 8px; border: 1px solid var(--grid-color); border-radius: 4px;';
+                        
+                        let checkboxes = '';
+                        columnData.categories.forEach(category => {
+                            checkboxes += `
+                                <label style="display: block; font-size: 9px; margin: 2px 0;">
+                                    <input type="checkbox" id="filter_${header}_${category}" checked style="margin-right: 4px;">
+                                    ${category}
+                                </label>
+                            `;
+                        });
+                        
+                        filterDiv.innerHTML = `
+                            <div style="font-size: 10px; color: var(--text-primary); margin-bottom: 4px;">${header}</div>
+                            ${checkboxes}
+                        `;
+                        
+                        filterContainer.appendChild(filterDiv);
+                        
+                        // Store filter info
+                        this.dataFilters[header] = {
+                            type: 'categorical',
+                            categories: columnData.categories,
+                            selected: new Set(columnData.categories)
+                        };
+                        
+                        // Add event listeners
+                        columnData.categories.forEach(category => {
+                            document.getElementById(`filter_${header}_${category}`).addEventListener('change', (e) => {
+                                if (e.target.checked) {
+                                    this.dataFilters[header].selected.add(category);
+                                } else {
+                                    this.dataFilters[header].selected.delete(category);
+                                }
+                                this.applyDataFilters();
+                            });
+                        });
+                    }
+                });
+                
+                filtersDiv.style.display = 'block';
+            }
+            
+            updateFilter(header, type, value) {
+                this.dataFilters[header][`current${type.charAt(0).toUpperCase() + type.slice(1)}`] = value;
+                document.getElementById(`filter_${header}_${type}_val`).textContent = value.toFixed(2);
+                
+                // Ensure min <= max
+                if (type === 'min' && value > this.dataFilters[header].currentMax) {
+                    this.dataFilters[header].currentMax = value;
+                    document.getElementById(`filter_${header}_max`).value = value;
+                    document.getElementById(`filter_${header}_max_val`).textContent = value.toFixed(2);
+                } else if (type === 'max' && value < this.dataFilters[header].currentMin) {
+                    this.dataFilters[header].currentMin = value;
+                    document.getElementById(`filter_${header}_min`).value = value;
+                    document.getElementById(`filter_${header}_min_val`).textContent = value.toFixed(2);
+                }
+                
+                this.applyDataFilters();
+            }
+            
+            applyDataFilters() {
+                if (!this.originalData || !this.dataFilters) return;
+                
+                this.data = this.originalData.filter(row => {
+                    for (const [header, filter] of Object.entries(this.dataFilters)) {
+                        const value = row[header];
+                        
+                        if (filter.type === 'numerical') {
+                            if (typeof value === 'number' && 
+                                (value < filter.currentMin || value > filter.currentMax)) {
+                                return false;
+                            }
+                        } else if (filter.type === 'categorical') {
+                            if (!filter.selected.has(value)) {
+                                return false;
+                            }
+                        }
+                    }
+                    return true;
+                });
+                
+                this.updateStatus(`FILTERED DATA: ${this.data.length}/${this.originalData.length} RECORDS`);
+                this.updateDataPreview();
+                this.updateVisualization();
+            }
+            
+            handleModeChange(e) {
+                document.querySelectorAll('.viz-button').forEach(btn => btn.classList.remove('active'));
+                e.target.classList.add('active');
+                this.currentMode = e.target.dataset.mode;
+                
+                // Show/hide dimension controls based on mode
+                const zGroup = document.getElementById('zDimensionGroup');
+                const timeGroup = document.getElementById('timeDimensionGroup');
+                const speedGroup = document.getElementById('animationSpeedGroup');
+                
+                zGroup.style.display = (this.currentMode === '3d' || this.currentMode === '4d') ? 'block' : 'none';
+                timeGroup.style.display = this.currentMode === '4d' ? 'block' : 'none';
+                speedGroup.style.display = this.currentMode === '4d' ? 'block' : 'none';
+                
+                // Show GIF export only for 4D animations
+                document.getElementById('exportGIF').style.display = this.currentMode === '4d' ? 'inline-block' : 'none';
+                
+                // Reset camera position when switching to 3D modes
+                if (this.currentMode === '3d' || this.currentMode === '4d' || this.currentMode === '2d-array') {
+                    this.cameraRotationX = 0;
+                    this.cameraRotationY = 0;
+                    this.cameraDistance = 16;
+                    if (!document.getElementById('autoRotate').checked) {
+                        this.updateCameraPosition();
+                    }
+                }
+                
+                this.updateVisualization();
+            }
+            
+            initializeThreeJS() {
+                const container = document.getElementById('canvasContainer');
+                
+                // Scene setup
+                this.scene = new THREE.Scene();
+                this.scene.background = new THREE.Color(0x0a0a0a);
+                
+                // Camera setup with wider field of view for better data visibility
+                const aspect = container.clientWidth / container.clientHeight;
+                this.camera = new THREE.PerspectiveCamera(60, aspect, 0.1, 1000); // Reduced FOV from 75 to 60
+                
+                // Set camera distance to 20 for optimal viewport fit
+                const baseDistance = 20;
+                this.camera.position.set(0, 0, baseDistance);
+                
+                // Renderer setup
+                this.renderer = new THREE.WebGLRenderer({ antialias: true });
+                this.renderer.setSize(container.clientWidth, container.clientHeight);
+                this.renderer.setPixelRatio(window.devicePixelRatio);
+                this.renderer.setClearColor(0x0a0a0a);
+                container.appendChild(this.renderer.domElement);
+                
+                // Force canvas to fill container
+                const canvas = this.renderer.domElement;
+                canvas.style.width = '100%';
+                canvas.style.height = '100%';
+                
+                // Lighting
+                const ambientLight = new THREE.AmbientLight(0x404040, 0.4);
+                this.scene.add(ambientLight);
+                
+                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+                directionalLight.position.set(10, 10, 5);
+                this.scene.add(directionalLight);
+                
+                // Handle window resize
+                window.addEventListener('resize', this.handleResize.bind(this));
+                
+                // Setup 3D controls after canvas is created
+                setTimeout(() => this.setup3DControls(), 100);
+                
+                this.animate();
+            }
+            
+            processDataDimension(data, dimension) {
+                const values = data.map(row => row[dimension]).filter(v => v !== null && v !== undefined);
+                
+                // Check if all values are numerical
+                const numericValues = values.filter(v => typeof v === 'number');
+                const isNumerical = numericValues.length === values.length && numericValues.length > 0;
+                
+                if (isNumerical) {
+                    const min = Math.min(...numericValues);
+                    const max = Math.max(...numericValues);
+                    return {
+                        type: 'numerical',
+                        min,
+                        max,
+                        range: max - min || 1,
+                        values: numericValues
+                    };
+                }
+                
+                // Check if values might be dates/datetimes
+                const dateValues = [];
+                let isDatetime = true;
+                
+                for (const value of values) {
+                    const stringVal = String(value).trim();
+                    
+                    // Try to parse various date formats
+                    let parsedDate = null;
+                    
+                    // ISO format (YYYY-MM-DD, YYYY-MM-DDTHH:mm:ss)
+                    if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(stringVal)) {
+                        parsedDate = new Date(stringVal);
+                    }
+                    // US format (MM/DD/YYYY, M/D/YYYY)
+                    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(stringVal)) {
+                        parsedDate = new Date(stringVal);
+                    }
+                    // European format (DD/MM/YYYY, D/M/YYYY)
+                    else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(stringVal)) {
+                        const parts = stringVal.split('/');
+                        parsedDate = new Date(`${parts[1]}/${parts[0]}/${parts[2]}`);
+                    }
+                    // Common formats with dashes or dots
+                    else if (/^\d{1,2}[-\.]\d{1,2}[-\.]\d{4}$/.test(stringVal)) {
+                        parsedDate = new Date(stringVal.replace(/[-\.]/g, '/'));
+                    }
+                    // Try generic Date parsing as fallback
+                    else {
+                        parsedDate = new Date(stringVal);
+                    }
+                    
+                    if (isNaN(parsedDate.getTime())) {
+                        isDatetime = false;
+                        break;
+                    }
+                    
+                    dateValues.push(parsedDate);
+                }
+                
+                if (isDatetime && dateValues.length > 0) {
+                    // Sort the dates to get proper ordering
+                    const sortedDates = [...dateValues].sort((a, b) => a.getTime() - b.getTime());
+                    const minTime = sortedDates[0].getTime();
+                    const maxTime = sortedDates[sortedDates.length - 1].getTime();
+                    
+                    // Create ordered values based on timestamp
+                    const orderedValues = values.map(value => {
+                        const stringVal = String(value).trim();
+                        let parsedDate = null;
+                        
+                        if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/.test(stringVal)) {
+                            parsedDate = new Date(stringVal);
+                        } else if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(stringVal)) {
+                            parsedDate = new Date(stringVal);
+                        } else if (/^\d{1,2}[-\.]\d{1,2}[-\.]\d{4}$/.test(stringVal)) {
+                            parsedDate = new Date(stringVal.replace(/[-\.]/g, '/'));
+                        } else {
+                            parsedDate = new Date(stringVal);
+                        }
+                        
+                        return parsedDate.getTime();
+                    });
+                    
+                    return {
+                        type: 'datetime',
+                        min: minTime,
+                        max: maxTime,
+                        range: maxTime - minTime || 1,
+                        values: orderedValues,
+                        originalValues: values,
+                        sortedDates: sortedDates
+                    };
+                } else {
+                    // Handle categorical data
+                    const uniqueValues = [...new Set(values)];
+                    return {
+                        type: 'categorical', 
+                        categories: uniqueValues,
+                        categoryMap: Object.fromEntries(uniqueValues.map((cat, i) => [cat, i])),
+                        min: 0,
+                        max: uniqueValues.length - 1,
+                        range: Math.max(uniqueValues.length - 1, 1),
+                        values: values
+                    };
+                }
+            }
+            
+            getViewportScaling() {
+                const container = document.getElementById('canvasContainer');
+                const aspectRatio = container.clientWidth / container.clientHeight;
+                
+                // Much more aggressive scaling to fill viewport
+                const baseScale = 8; // Increased from 2
+                const scaleX = aspectRatio > 1 ? baseScale * Math.min(aspectRatio * 1.5, 4) : baseScale * 0.8;
+                const scaleY = aspectRatio < 1 ? baseScale * Math.min((1/aspectRatio) * 1.5, 4) : baseScale * 0.8;
+                const scaleZ = baseScale;
+                
+                return { scaleX, scaleY, scaleZ };
+            }
+            
+            updateVisualization() {
+                if (!this.data || this.data.length === 0) return;
+                
+                // Stop any existing 4D animation
+                if (this.animate4DTimeout) {
+                    clearTimeout(this.animate4DTimeout);
+                    this.animate4DTimeout = null;
+                }
+                
+                // Clean up particle system
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                    this.particleSystem = null;
+                }
+                
+                // Clear existing visualization
+                while (this.scene.children.length > 2) { // Keep lights
+                    this.scene.remove(this.scene.children[2]);
+                }
+                
+                const xDim = document.getElementById('xDimension').value;
+                const yDim = document.getElementById('yDimension').value;
+                const zDim = document.getElementById('zDimension').value;
+                
+                if (xDim === 'Select dimension...' || yDim === 'Select dimension...') {
+                    return;
+                }
+                
+                switch (this.currentMode) {
+                    case '2d':
+                        this.create2DVisualization(xDim, yDim);
+                        break;
+                    case '2d-array':
+                        this.create2DArrayVisualization(xDim, yDim);
+                        break;
+                    case '3d':
+                        if (zDim !== 'Select dimension...') {
+                            this.create3DVisualization(xDim, yDim, zDim);
+                        }
+                        break;
+                    case '4d':
+                        if (zDim !== 'Select dimension...') {
+                            this.create4DVisualization(xDim, yDim, zDim);
+                        }
+                        break;
+                }
+            }
+            
+            create2DVisualization(xDim, yDim) {
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                
+                // Normalize data
+                const xValues = this.data.map(row => row[xDim]).filter(v => typeof v === 'number');
+                const yValues = this.data.map(row => row[yDim]).filter(v => typeof v === 'number');
+                
+                if (xValues.length === 0 || yValues.length === 0) {
+                    this.updateStatus('ERROR: INSUFFICIENT NUMERICAL DATA FOR 2D VISUALIZATION');
+                    return;
+                }
+                
+                const xMin = Math.min(...xValues);
+                const xMax = Math.max(...xValues);
+                const yMin = Math.min(...yValues);
+                const yMax = Math.max(...yValues);
+                
+                // Prevent division by zero
+                const xRange = xMax - xMin || 1;
+                const yRange = yMax - yMin || 1;
+                
+                // Get dynamic viewport scaling
+                const { scaleX, scaleY } = this.getViewportScaling();
+                
+                this.data.forEach(row => {
+                    const x = row[xDim];
+                    const y = row[yDim];
+                    
+                    if (typeof x === 'number' && typeof y === 'number') {
+                        const normalizedX = ((x - xMin) / xRange - 0.5) * scaleX;
+                        const normalizedY = ((y - yMin) / yRange - 0.5) * scaleY;
+                        
+                        positions.push(normalizedX, normalizedY, 0);
+                        colors.push(1, 0.42, 0.21); // Orange color
+                    }
+                });
+                
+                if (positions.length === 0) {
+                    this.updateStatus('ERROR: NO VALID DATA POINTS FOR VISUALIZATION');
+                    return;
+                }
+                
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.05,
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.8
+                });
+                
+                const points = new THREE.Points(geometry, material);
+                this.scene.add(points);
+                
+                // Add axis lines
+                this.addAxisLines();
+                
+                this.updateStatus(`2D VISUALIZATION: ${positions.length / 3} POINTS RENDERED`);
+            }
+            
+            create2DArrayVisualization(xDim, yDim) {
+                const colorDim = document.getElementById('colorDimension').value;
+                
+                // Limit data size to prevent OOM crashes
+                const maxDataPoints = 10000; // Reasonable limit for performance
+                const dataToUse = this.data.slice(0, maxDataPoints);
+                
+                if (this.data.length > maxDataPoints) {
+                    this.updateStatus(`ARRAY VISUALIZATION: Using first ${maxDataPoints} of ${this.data.length} records for performance`);
+                }
+                
+                // Create a grid visualization with efficient instanced rendering
+                const gridSize = Math.ceil(Math.sqrt(dataToUse.length));
+                const spacing = 4 / gridSize;
+                
+                // Get Y dimension values for height mapping
+                const yValues = dataToUse.map(row => row[yDim]).filter(v => typeof v === 'number');
+                if (yValues.length === 0) {
+                    this.updateStatus('ERROR: NO NUMERICAL DATA FOR ARRAY VISUALIZATION');
+                    return;
+                }
+                
+                const yMin = Math.min(...yValues);
+                const yMax = Math.max(...yValues);
+                const yRange = yMax - yMin || 1;
+                
+                // Get color dimension data if specified
+                let colorData;
+                if (colorDim) {
+                    colorData = this.processDataDimension(dataToUse, colorDim);
+                }
+                
+                // Use instanced rendering for much better performance
+                const baseGeometry = new THREE.BoxGeometry(spacing * 0.8, 1, spacing * 0.8);
+                const material = new THREE.MeshBasicMaterial({ 
+                    vertexColors: true,
+                    transparent: false,
+                    opacity: 1.0
+                });
+                
+                // Prepare instance data
+                const instanceCount = Math.min(dataToUse.length, gridSize * gridSize);
+                const instancedMesh = new THREE.InstancedMesh(baseGeometry, material, instanceCount);
+                
+                const matrix = new THREE.Matrix4();
+                const color = new THREE.Color();
+                
+                let validCubes = 0;
+                
+                for (let i = 0; i < instanceCount; i++) {
+                    const row = dataToUse[i];
+                    const value = row[yDim];
+                    
+                    if (typeof value === 'number') {
+                        const x = (i % gridSize) * spacing - 2;
+                        const z = Math.floor(i / gridSize) * spacing - 2;
+                        
+                        const normalizedValue = (value - yMin) / yRange;
+                        const height = normalizedValue * 2 + 0.1; // Scale height
+                        
+                        // Set position and scale using transformation matrix
+                        matrix.compose(
+                            new THREE.Vector3(x, height / 2, z), // position
+                            new THREE.Quaternion(), // rotation (none)
+                            new THREE.Vector3(1, height, 1) // scale (height affects Y scale)
+                        );
+                        
+                        instancedMesh.setMatrixAt(i, matrix);
+                        
+                        // Set color based on color dimension or default to height-based color
+                        if (colorData) {
+                            const colorValue = row[colorDim];
+                            if (colorData.type === 'numerical' && typeof colorValue === 'number') {
+                                const normalizedColor = (colorValue - colorData.min) / colorData.range;
+                                color.setHSL(normalizedColor * 0.7, 0.8, 0.6);
+                            } else if (colorData.type === 'categorical') {
+                                const categoryIndex = colorData.categories.indexOf(colorValue);
+                                const hue = (categoryIndex / colorData.categories.length) * 0.8;
+                                color.setHSL(hue, 0.7, 0.6);
+                            } else {
+                                // Fallback to height-based color
+                                color.setHSL(normalizedValue * 0.7, 0.8, 0.6);
+                            }
+                        } else {
+                            // Default: height-based color
+                            color.setHSL(normalizedValue * 0.7, 0.8, 0.6);
+                        }
+                        
+                        instancedMesh.setColorAt(i, color);
+                        
+                        validCubes++;
+                    } else {
+                        // Hide invalid cubes by scaling them to zero
+                        matrix.compose(
+                            new THREE.Vector3(0, -10, 0), // position (hidden below)
+                            new THREE.Quaternion(),
+                            new THREE.Vector3(0, 0, 0) // scale to zero
+                        );
+                        instancedMesh.setMatrixAt(i, matrix);
+                        instancedMesh.setColorAt(i, new THREE.Color(0, 0, 0));
+                    }
+                }
+                
+                // Update the instance attributes
+                instancedMesh.instanceMatrix.needsUpdate = true;
+                instancedMesh.instanceColor.needsUpdate = true;
+                
+                this.scene.add(instancedMesh);
+                
+                // Set camera distance to 16 for optimal 2D array view
+                this.camera.position.set(0, 0, 16);
+                this.cameraDistance = 16;
+                
+                this.updateStatus(`2D ARRAY: ${validCubes} CUBES IN ${gridSize}x${gridSize} GRID (Instanced Rendering)`);
+            }
+            
+            create3DVisualization(xDim, yDim, zDim) {
+                const colorDim = document.getElementById('colorDimension').value;
+                const sizeDim = document.getElementById('sizeDimension').value;
+                
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                const sizes = [];
+                
+                // Process all dimensions (supports both numerical and categorical)
+                const xData = this.processDataDimension(this.data, xDim);
+                const yData = this.processDataDimension(this.data, yDim);
+                const zData = this.processDataDimension(this.data, zDim);
+                
+                // Get dynamic viewport scaling
+                const { scaleX, scaleY, scaleZ } = this.getViewportScaling();
+                
+                // Get color and size dimension data if specified
+                let colorData, sizeData;
+                
+                if (colorDim) {
+                    colorData = this.processDataDimension(this.data, colorDim);
+                }
+                
+                if (sizeDim) {
+                    sizeData = this.processDataDimension(this.data, sizeDim);
+                }
+                
+                this.data.forEach(row => {
+                    const xValue = row[xDim];
+                    const yValue = row[yDim];
+                    const zValue = row[zDim];
+                    
+                    // Skip rows with missing values
+                    if (xValue == null || yValue == null || zValue == null) return;
+                    
+                    // Normalize values based on data type
+                    let normalizedX, normalizedY, normalizedZ;
+                    
+                    if (xData.type === 'numerical') {
+                        normalizedX = ((xValue - xData.min) / xData.range) * scaleX - scaleX/2;
+                    } else {
+                        normalizedX = (xData.categoryMap[xValue] / xData.range) * scaleX - scaleX/2;
+                    }
+                    
+                    if (yData.type === 'numerical') {
+                        normalizedY = ((yValue - yData.min) / yData.range) * scaleY - scaleY/2;
+                    } else {
+                        normalizedY = (yData.categoryMap[yValue] / yData.range) * scaleY - scaleY/2;
+                    }
+                    
+                    if (zData.type === 'numerical') {
+                        normalizedZ = ((zValue - zData.min) / zData.range) * scaleZ - scaleZ/2;
+                    } else {
+                        normalizedZ = (zData.categoryMap[zValue] / zData.range) * scaleZ - scaleZ/2;
+                    }
+                    
+                    positions.push(normalizedX, normalizedY, normalizedZ);
+                    
+                    // Color mapping
+                    let hue;
+                    if (colorDim && colorData) {
+                        const colorValue = row[colorDim];
+                        if (colorData.type === 'numerical') {
+                            hue = (colorValue - colorData.min) / colorData.range;
+                        } else {
+                            hue = colorData.categoryMap[colorValue] / colorData.range;
+                        }
+                    } else {
+                        // Default z-based coloring
+                        if (zData.type === 'numerical') {
+                            hue = (zValue - zData.min) / zData.range;
+                        } else {
+                            hue = zData.categoryMap[zValue] / zData.range;
+                        }
+                    }
+                    
+                    const color = new THREE.Color().setHSL(hue * 0.7, 1, 0.6);
+                    colors.push(color.r, color.g, color.b);
+                    
+                    // Size mapping
+                    let pointSize;
+                    if (sizeDim && sizeData) {
+                        const sizeValue = row[sizeDim];
+                        let normalizedSize;
+                        if (sizeData.type === 'numerical') {
+                            normalizedSize = (sizeValue - sizeData.min) / sizeData.range;
+                        } else {
+                            normalizedSize = sizeData.categoryMap[sizeValue] / sizeData.range;
+                        }
+                        pointSize = 0.1 + normalizedSize * 0.3; // Range: 0.1 to 0.4
+                    } else {
+                        pointSize = 0.2; // default size
+                    }
+                    sizes.push(pointSize);
+                });
+                
+                if (positions.length === 0) {
+                    this.updateStatus('ERROR: NO VALID DATA POINTS FOR VISUALIZATION');
+                    return;
+                }
+                
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.2, // Increased for better visibility
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.9,
+                    sizeAttenuation: true
+                });
+                
+                const points = new THREE.Points(geometry, material);
+                this.scene.add(points);
+                
+                // Add 3D axis lines with actual data bounds
+                this.add3DAxisLines(xData, yData, zData);
+                
+                let statusText = `3D VISUALIZATION: ${positions.length / 3} POINTS RENDERED`;
+                statusText += ` | X: ${xData.type} | Y: ${yData.type} | Z: ${zData.type}`;
+                if (colorDim) statusText += ` | COLOR: ${colorDim}`;
+                if (sizeDim) statusText += ` | SIZE: ${sizeDim}`;
+                this.updateStatus(statusText);
+            }
+            
+            create4DVisualization(xDim, yDim, zDim) {
+                // For 4D, we'll animate through time slices
+                const timeDim = document.getElementById('timeDimension').value;
+                if (timeDim === 'Select dimension...') {
+                    this.updateStatus('ERROR: TIME DIMENSION NOT SELECTED');
+                    return;
+                }
+                
+                // Stop any existing 4D animation
+                if (this.animate4DTimeout) {
+                    clearTimeout(this.animate4DTimeout);
+                }
+                
+                // Group data by time dimension
+                const timeGroups = {};
+                this.data.forEach(row => {
+                    const timeValue = row[timeDim];
+                    if (timeValue !== null && timeValue !== undefined) {
+                        if (!timeGroups[timeValue]) {
+                            timeGroups[timeValue] = [];
+                        }
+                        timeGroups[timeValue].push(row);
+                    }
+                });
+                
+                const timeKeys = Object.keys(timeGroups).sort((a, b) => {
+                    // Sort numerically if both are numbers, otherwise alphabetically
+                    const aNum = parseFloat(a);
+                    const bNum = parseFloat(b);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return aNum - bNum;
+                    }
+                    return a.localeCompare(b);
+                });
+                
+                if (timeKeys.length === 0) {
+                    this.updateStatus('ERROR: NO TIME DATA FOUND');
+                    return;
+                }
+                
+                // Pre-calculate data bounds for consistent scaling across all frames
+                const xData = this.processDataDimension(this.data, xDim);
+                const yData = this.processDataDimension(this.data, yDim);
+                const zData = this.processDataDimension(this.data, zDim);
+                
+                // Initialize particle system for persistent particles
+                this.initializeParticleSystem(xData, yData, zData);
+                
+                let currentTimeIndex = 0;
+                
+                const animate4D = () => {
+                    // Get animation speed from slider for fade timing
+                    const speedSlider = document.getElementById('animationSpeed');
+                    const animationSpeed = parseFloat(speedSlider.value) * 1000; // Convert to milliseconds
+                    const fadeLifetime = animationSpeed * 1.0; // Particle lifetime = half frame time
+                    
+                    // Get current time slice data
+                    const currentData = timeGroups[timeKeys[currentTimeIndex]] || [];
+                    
+                    // Add new particles for current frame
+                    this.addParticles(currentData, xDim, yDim, zDim, timeDim, xData, yData, zData, fadeLifetime);
+                    
+                    // Update all particles (handle lifetime and fading)
+                    this.updateParticles();
+                    
+                    // Update status
+                    const activeParticles = this.particleSystem ? this.particleSystem.userData.activeCount : 0;
+                    this.updateStatus(`4D ANIMATION: TIME=${timeKeys[currentTimeIndex]} (${currentTimeIndex + 1}/${timeKeys.length}) - ${currentData.length} new + ${activeParticles} active particles`);
+                    
+                    // Update time index
+                    currentTimeIndex = (currentTimeIndex + 1) % timeKeys.length;
+                    
+                    // Schedule next frame
+                    this.animate4DTimeout = setTimeout(animate4D, animationSpeed);
+                };
+                
+                animate4D();
+            }
+            
+            initializeParticleSystem(xData, yData, zData) {
+                // Remove existing particle system
+                if (this.particleSystem) {
+                    this.scene.remove(this.particleSystem);
+                }
+                
+                // Create a large buffer for particles (pre-allocate for performance)
+                const maxParticles = 10000;
+                
+                const geometry = new THREE.BufferGeometry();
+                const positions = new Float32Array(maxParticles * 3);
+                const colors = new Float32Array(maxParticles * 3);
+                const sizes = new Float32Array(maxParticles);
+                const lifetimes = new Float32Array(maxParticles);
+                const maxLifetimes = new Float32Array(maxParticles);
+                const alphas = new Float32Array(maxParticles);
+                
+                // Initialize all particles as inactive
+                positions.fill(0);
+                colors.fill(0);
+                sizes.fill(0);
+                lifetimes.fill(-1); // -1 means inactive
+                maxLifetimes.fill(0);
+                alphas.fill(0);
+                
+                geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+                geometry.setAttribute('lifetime', new THREE.BufferAttribute(lifetimes, 1));
+                geometry.setAttribute('maxLifetime', new THREE.BufferAttribute(maxLifetimes, 1));
+                geometry.setAttribute('alpha', new THREE.BufferAttribute(alphas, 1));
+                
+            // Alternative version with more control over glow size:
+            const material = new THREE.ShaderMaterial({
+                vertexColors: true,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                uniforms: {
+                    glowRadius: { value: 1.0 } // Control glow spread
+                },
+                vertexShader: `
+                    attribute float size;
+                    attribute float alpha;
+                    varying vec3 vColor;
+                    varying float vAlpha;
+                    
+                    void main() {
+                        vColor = color;
+                        vAlpha = alpha;
+                        vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                        gl_PointSize = size * (300.0 / -mvPosition.z);
+                        gl_Position = projectionMatrix * mvPosition;
+                    }
+                `,
+                fragmentShader: `
+                    uniform float glowRadius;
+                    varying vec3 vColor;
+                    varying float vAlpha;
+                    
+                    void main() {
+                        vec2 center = gl_PointCoord - 0.5;
+                        float dist = length(center) * 2.0; // Normalize to 0-1 range
+                        
+                        // Gaussian with controllable radius
+                        float gaussian = exp(-dist * dist / (glowRadius * glowRadius));
+                        
+                        float alpha = gaussian * vAlpha;
+                        gl_FragColor = vec4(vColor * alpha, alpha);
+                    }
+                `
+            });
+                
+                // Create particle system
+                this.particleSystem = new THREE.Points(geometry, material);
+                this.particleSystem.userData = {
+                    activeCount: 0,
+                    nextIndex: 0,
+                    maxParticles: maxParticles
+                };
+                
+                this.scene.add(this.particleSystem);
+                
+                // Add 3D axes for particle system
+                this.add3DAxisLines(xData, yData, zData);
+            }
+            
+            addParticles(data, xDim, yDim, zDim, timeDim, xData, yData, zData, lifetime) {
+                if (!this.particleSystem) return;
+                
+                const geometry = this.particleSystem.geometry;
+                const positions = geometry.attributes.position.array;
+                const colors = geometry.attributes.color.array;
+                const sizes = geometry.attributes.size.array;
+                const lifetimes = geometry.attributes.lifetime.array;
+                const maxLifetimes = geometry.attributes.maxLifetime.array;
+                const alphas = geometry.attributes.alpha.array;
+                
+                const colorDim = document.getElementById('colorDimension').value;
+                const sizeDim = document.getElementById('sizeDimension').value;
+                
+                // Get dynamic viewport scaling
+                const { scaleX, scaleY, scaleZ } = this.getViewportScaling();
+                
+                // Get color and size dimension data if specified
+                let colorData, sizeData;
+                if (colorDim) colorData = this.processDataDimension(data, colorDim);
+                if (sizeDim) sizeData = this.processDataDimension(data, sizeDim);
+                
+                data.forEach(row => {
+                    const xValue = row[xDim];
+                    const yValue = row[yDim];
+                    const zValue = row[zDim];
+                    
+                    if (xValue == null || yValue == null || zValue == null) return;
+                    
+                    // Find next available particle slot
+                    let particleIndex = -1;
+                    for (let i = 0; i < this.particleSystem.userData.maxParticles; i++) {
+                        if (lifetimes[i] < 0) { // Inactive particle
+                            particleIndex = i;
+                            break;
+                        }
+                    }
+                    
+                    if (particleIndex === -1) return; // No available slots
+                    
+                    // Calculate position
+                    let normalizedX, normalizedY, normalizedZ;
+                    
+                    if (xData.type === 'numerical') {
+                        normalizedX = ((xValue - xData.min) / xData.range) * scaleX - scaleX/2;
+                    } else {
+                        normalizedX = (xData.categoryMap[xValue] / xData.range) * scaleX - scaleX/2;
+                    }
+                    
+                    if (yData.type === 'numerical') {
+                        normalizedY = ((yValue - yData.min) / yData.range) * scaleY - scaleY/2;
+                    } else {
+                        normalizedY = (yData.categoryMap[yValue] / yData.range) * scaleY - scaleY/2;
+                    }
+                    
+                    if (zData.type === 'numerical') {
+                        normalizedZ = ((zValue - zData.min) / zData.range) * scaleZ - scaleZ/2;
+                    } else {
+                        normalizedZ = (zData.categoryMap[zValue] / zData.range) * scaleZ - scaleZ/2;
+                    }
+                    
+                    // Set particle position
+                    positions[particleIndex * 3] = normalizedX;
+                    positions[particleIndex * 3 + 1] = normalizedY;
+                    positions[particleIndex * 3 + 2] = normalizedZ;
+                    
+                    // Set particle color
+                    if (colorData) {
+                        const colorValue = row[colorDim];
+                        let normalizedColor;
+                        if (colorData.type === 'numerical') {
+                            normalizedColor = (colorValue - colorData.min) / colorData.range;
+                        } else {
+                            normalizedColor = colorData.categoryMap[colorValue] / colorData.range;
+                        }
+                        const hue = normalizedColor * 0.7; // Use 70% of hue spectrum
+                        const tempColor = new THREE.Color();
+                        tempColor.setHSL(hue, 0.8, 0.6);
+                        colors[particleIndex * 3] = tempColor.r;
+                        colors[particleIndex * 3 + 1] = tempColor.g;
+                        colors[particleIndex * 3 + 2] = tempColor.b;
+                    } else {
+                        colors[particleIndex * 3] = 0.0;
+                        colors[particleIndex * 3 + 1] = 1.0;
+                        colors[particleIndex * 3 + 2] = 1.0;
+                    }
+                    
+                    // Set particle size
+                    if (sizeData) {
+                        const sizeValue = row[sizeDim];
+                        let normalizedSize;
+                        if (sizeData.type === 'numerical') {
+                            normalizedSize = (sizeValue - sizeData.min) / sizeData.range;
+                        } else {
+                            normalizedSize = sizeData.categoryMap[sizeValue] / sizeData.range;
+                        }
+                        sizes[particleIndex] = 0.5 + normalizedSize * 0.15; // Size range 0.05-0.2
+                    } else {
+                        sizes[particleIndex] = 1.0;
+                    }
+                    
+                    // Set particle lifetime
+                    lifetimes[particleIndex] = lifetime;
+                    maxLifetimes[particleIndex] = lifetime;
+                    alphas[particleIndex] = 1.0;
+                });
+                
+                // Mark attributes as needing update
+                geometry.attributes.position.needsUpdate = true;
+                geometry.attributes.color.needsUpdate = true;
+                geometry.attributes.size.needsUpdate = true;
+                geometry.attributes.lifetime.needsUpdate = true;
+                geometry.attributes.maxLifetime.needsUpdate = true;
+                geometry.attributes.alpha.needsUpdate = true;
+            }
+            
+            updateParticles() {
+                if (!this.particleSystem) return;
+                
+                const geometry = this.particleSystem.geometry;
+                const lifetimes = geometry.attributes.lifetime.array;
+                const maxLifetimes = geometry.attributes.maxLifetime.array;
+                const alphas = geometry.attributes.alpha.array;
+                
+                let activeCount = 0;
+                const deltaTime = 16.67; // ~60fps
+                
+                for (let i = 0; i < this.particleSystem.userData.maxParticles; i++) {
+                    if (lifetimes[i] >= 0) { // Active particle
+                        // Decrease lifetime
+                        lifetimes[i] -= deltaTime;
+                        
+                        if (lifetimes[i] <= 0) {
+                            // Particle expired
+                            lifetimes[i] = -1;
+                            alphas[i] = 0;
+                        } else {
+                            // Calculate alpha based on remaining lifetime with shimmer
+                            const lifeProgress = lifetimes[i] / maxLifetimes[i];
+                            const shimmer = 0.1 * Math.sin(Date.now() * 0.01 + i * 0.1);
+                            alphas[i] = Math.max(0, lifeProgress + shimmer * lifeProgress);
+                            activeCount++;
+                        }
+                    }
+                }
+                
+                this.particleSystem.userData.activeCount = activeCount;
+                
+                // Update material opacity based on alpha values
+                geometry.attributes.lifetime.needsUpdate = true;
+                geometry.attributes.alpha.needsUpdate = true;
+            }
+            
+            
+            create3DVisualizationFromData(data, xDim, yDim, zDim, globalXData = null, globalYData = null, globalZData = null) {
+                const colorDim = document.getElementById('colorDimension').value;
+                const sizeDim = document.getElementById('sizeDimension').value;
+                
+                const geometry = new THREE.BufferGeometry();
+                const positions = [];
+                const colors = [];
+                const sizes = [];
+                
+                // Use global data bounds if provided (for 4D consistency), otherwise calculate from current data
+                const xData = globalXData || this.processDataDimension(data, xDim);
+                const yData = globalYData || this.processDataDimension(data, yDim);
+                const zData = globalZData || this.processDataDimension(data, zDim);
+                
+                // Get dynamic viewport scaling
+                const { scaleX, scaleY, scaleZ } = this.getViewportScaling();
+                
+                // Get color and size dimension data if specified
+                let colorData, sizeData;
+                
+                if (colorDim) {
+                    colorData = this.processDataDimension(data, colorDim);
+                }
+                
+                if (sizeDim) {
+                    sizeData = this.processDataDimension(data, sizeDim);
+                }
+                
+                data.forEach(row => {
+                    const xValue = row[xDim];
+                    const yValue = row[yDim];
+                    const zValue = row[zDim];
+                    
+                    // Skip rows with missing values
+                    if (xValue == null || yValue == null || zValue == null) return;
+                    
+                    // Normalize values based on data type using global bounds
+                    let normalizedX, normalizedY, normalizedZ;
+                    
+                    if (xData.type === 'numerical') {
+                        normalizedX = ((xValue - xData.min) / xData.range) * scaleX - scaleX/2;
+                    } else {
+                        normalizedX = (xData.categoryMap[xValue] / xData.range) * scaleX - scaleX/2;
+                    }
+                    
+                    if (yData.type === 'numerical') {
+                        normalizedY = ((yValue - yData.min) / yData.range) * scaleY - scaleY/2;
+                    } else {
+                        normalizedY = (yData.categoryMap[yValue] / yData.range) * scaleY - scaleY/2;
+                    }
+                    
+                    if (zData.type === 'numerical') {
+                        normalizedZ = ((zValue - zData.min) / zData.range) * scaleZ - scaleZ/2;
+                    } else {
+                        normalizedZ = (zData.categoryMap[zValue] / zData.range) * scaleZ - scaleZ/2;
+                    }
+                    
+                    positions.push(normalizedX, normalizedY, normalizedZ);
+                    
+                    // Color mapping
+                    let hue;
+                    if (colorDim && colorData) {
+                        const colorValue = row[colorDim];
+                        if (colorData.type === 'numerical') {
+                            hue = (colorValue - colorData.min) / colorData.range;
+                        } else {
+                            hue = colorData.categoryMap[colorValue] / colorData.range;
+                        }
+                    } else {
+                        // Default z-based coloring
+                        if (zData.type === 'numerical') {
+                            hue = (zValue - zData.min) / zData.range;
+                        } else {
+                            hue = zData.categoryMap[zValue] / zData.range;
+                        }
+                    }
+                    
+                    const color = new THREE.Color().setHSL(hue * 0.7, 1, 0.6);
+                    colors.push(color.r, color.g, color.b);
+                    
+                    // Size mapping
+                    let pointSize;
+                    if (sizeDim && sizeData) {
+                        const sizeValue = row[sizeDim];
+                        let normalizedSize;
+                        if (sizeData.type === 'numerical') {
+                            normalizedSize = (sizeValue - sizeData.min) / sizeData.range;
+                        } else {
+                            normalizedSize = sizeData.categoryMap[sizeValue] / sizeData.range;
+                        }
+                        pointSize = 0.1 + normalizedSize * 0.3; // Range: 0.1 to 0.4
+                    } else {
+                        pointSize = 0.2; // default size
+                    }
+                    sizes.push(pointSize);
+                });
+                
+                if (positions.length === 0) return;
+                
+                geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+                geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1));
+                
+                const material = new THREE.PointsMaterial({
+                    size: 0.2, // Increased for better visibility
+                    vertexColors: true,
+                    transparent: true,
+                    opacity: 0.9,
+                    sizeAttenuation: true
+                });
+                
+                const points = new THREE.Points(geometry, material);
+                this.scene.add(points);
+                
+                this.add3DAxisLines(xData, yData, zData);
+            }
+            
+            addAxisLines() {
+                const { scaleX, scaleY } = this.getViewportScaling();
+                const halfScaleX = scaleX * 0.6;
+                const halfScaleY = scaleY * 0.6;
+                
+                // X axis (red)
+                const xGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-halfScaleX, 0, 0),
+                    new THREE.Vector3(halfScaleX, 0, 0)
+                ]);
+                const xMaterial = new THREE.LineBasicMaterial({ color: 0xff6b35 });
+                const xLine = new THREE.Line(xGeometry, xMaterial);
+                this.scene.add(xLine);
+                
+                // Y axis (cyan)
+                const yGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, -halfScaleY, 0),
+                    new THREE.Vector3(0, halfScaleY, 0)
+                ]);
+                const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+                const yLine = new THREE.Line(yGeometry, yMaterial);
+                this.scene.add(yLine);
+                
+                // Add axis labels for 2D
+                this.addAxisLabels2D(halfScaleX, halfScaleY);
+            }
+            
+            add3DAxisLines(xData = null, yData = null, zData = null) {
+                const { scaleX, scaleY, scaleZ } = this.getViewportScaling();
+                
+                // Use full scale for axis lines to show complete data space
+                const halfScaleX = scaleX * 0.6;
+                const halfScaleY = scaleY * 0.6;
+                const halfScaleZ = scaleZ * 0.6;
+                
+                // X axis (orange)
+                const xGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(-halfScaleX, 0, 0),
+                    new THREE.Vector3(halfScaleX, 0, 0)
+                ]);
+                const xMaterial = new THREE.LineBasicMaterial({ color: 0xffb000 });
+                const xLine = new THREE.Line(xGeometry, xMaterial);
+                this.scene.add(xLine);
+                
+                // Y axis (cyan)
+                const yGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, -halfScaleY, 0),
+                    new THREE.Vector3(0, halfScaleY, 0)
+                ]);
+                const yMaterial = new THREE.LineBasicMaterial({ color: 0x00ffff });
+                const yLine = new THREE.Line(yGeometry, yMaterial);
+                this.scene.add(yLine);
+                
+                // Z axis (yellow)
+                const zGeometry = new THREE.BufferGeometry().setFromPoints([
+                    new THREE.Vector3(0, 0, -halfScaleZ),
+                    new THREE.Vector3(0, 0, halfScaleZ)
+                ]);
+                const zMaterial = new THREE.LineBasicMaterial({ color: 0xffff00 });
+                const zLine = new THREE.Line(zGeometry, zMaterial);
+                this.scene.add(zLine);
+                
+                // Add axis labels for 3D with data information
+                this.addAxisLabels3D(halfScaleX, halfScaleY, halfScaleZ, xData, yData, zData);
+            }
+            
+            addAxisLabels2D(halfScaleX, halfScaleY) {
+                // Get current dimension names and data ranges
+                const xDim = document.getElementById('xDimension').value;
+                const yDim = document.getElementById('yDimension').value;
+                
+                if (xDim === 'Select dimension...' || yDim === 'Select dimension...') return;
+                
+                // Calculate data ranges
+                const xValues = this.data.map(row => row[xDim]).filter(v => typeof v === 'number');
+                const yValues = this.data.map(row => row[yDim]).filter(v => typeof v === 'number');
+                
+                if (xValues.length === 0 || yValues.length === 0) return;
+                
+                const xMin = Math.min(...xValues);
+                const xMax = Math.max(...xValues);
+                const yMin = Math.min(...yValues);
+                const yMax = Math.max(...yValues);
+                
+                // Create text labels
+                this.createTextLabel(`${xDim}`, halfScaleX + 0.5, -0.5, 0, 0xff6b35);
+                this.createTextLabel(`${yDim}`, -0.5, halfScaleY + 0.5, 0, 0x00ffff);
+                
+                // Add min/max value labels
+                this.createTextLabel(`${xMin.toFixed(1)}`, -halfScaleX, -0.8, 0, 0xff6b35, 0.6);
+                this.createTextLabel(`${xMax.toFixed(1)}`, halfScaleX, -0.8, 0, 0xff6b35, 0.6);
+                this.createTextLabel(`${yMin.toFixed(1)}`, -1.2, -halfScaleY, 0, 0x00ffff, 0.6);
+                this.createTextLabel(`${yMax.toFixed(1)}`, -1.2, halfScaleY, 0, 0x00ffff, 0.6);
+            }
+            
+            addAxisLabels3D(halfScaleX, halfScaleY, halfScaleZ, xData = null, yData = null, zData = null) {
+                // Get current dimension names
+                const xDim = document.getElementById('xDimension').value;
+                const yDim = document.getElementById('yDimension').value;
+                const zDim = document.getElementById('zDimension').value;
+                
+                if (xDim === 'Select dimension...' || yDim === 'Select dimension...' || zDim === 'Select dimension...') return;
+                
+                // Use provided data if available, otherwise calculate
+                if (!xData) xData = this.processDataDimension(this.data, xDim);
+                if (!yData) yData = this.processDataDimension(this.data, yDim);
+                if (!zData) zData = this.processDataDimension(this.data, zDim);
+                
+                // Create axis name labels with type indicators
+                this.createTextLabel(`${xDim} (${xData.type})`, halfScaleX + 1, 0, 0, 0xffb000);
+                this.createTextLabel(`${yDim} (${yData.type})`, 0, halfScaleY + 1, 0, 0x00ffff);
+                this.createTextLabel(`${zDim} (${zData.type})`, 0, 0, halfScaleZ + 1, 0xffff00);
+                
+                // Add range labels based on data type
+                if (xData.type === 'numerical') {
+                    this.createTextLabel(`${xData.min.toFixed(1)}`, -halfScaleX, -1, 0, 0xffb000, 0.6);
+                    this.createTextLabel(`${xData.max.toFixed(1)}`, halfScaleX, -1, 0, 0xffb000, 0.6);
+                } else {
+                    // Show first and last categories
+                    this.createTextLabel(`${xData.categories[0]}`, -halfScaleX, -1, 0, 0xffb000, 0.6);
+                    if (xData.categories.length > 1) {
+                        this.createTextLabel(`${xData.categories[xData.categories.length-1]}`, halfScaleX, -1, 0, 0xffb000, 0.6);
+                    }
+                }
+                
+                if (yData.type === 'numerical') {
+                    this.createTextLabel(`${yData.min.toFixed(1)}`, -1.5, -halfScaleY, 0, 0x00ffff, 0.6);
+                    this.createTextLabel(`${yData.max.toFixed(1)}`, -1.5, halfScaleY, 0, 0x00ffff, 0.6);
+                } else {
+                    this.createTextLabel(`${yData.categories[0]}`, -1.5, -halfScaleY, 0, 0x00ffff, 0.6);
+                    if (yData.categories.length > 1) {
+                        this.createTextLabel(`${yData.categories[yData.categories.length-1]}`, -1.5, halfScaleY, 0, 0x00ffff, 0.6);
+                    }
+                }
+                
+                if (zData.type === 'numerical') {
+                    this.createTextLabel(`${zData.min.toFixed(1)}`, 0, -1.5, -halfScaleZ, 0xffff00, 0.6);
+                    this.createTextLabel(`${zData.max.toFixed(1)}`, 0, -1.5, halfScaleZ, 0xffff00, 0.6);
+                } else {
+                    this.createTextLabel(`${zData.categories[0]}`, 0, -1.5, -halfScaleZ, 0xffff00, 0.6);
+                    if (zData.categories.length > 1) {
+                        this.createTextLabel(`${zData.categories[zData.categories.length-1]}`, 0, -1.5, halfScaleZ, 0xffff00, 0.6);
+                    }
+                }
+            }
+            
+            wrapText(ctx, text, x, y, maxWidth, lineHeight) {
+                const words = text.split(' ');
+                let line = '';
+                let testLine;
+                let metrics;
+                let testWidth;
+
+                for (let n = 0; n < words.length; n++) {
+                    testLine = line + words[n] + ' ';
+                    metrics = ctx.measureText(testLine);
+                    testWidth = metrics.width;
+
+                    if (testWidth > maxWidth && n > 0) {
+                        ctx.fillText(line, x, y);
+                        line = words[n] + ' ';
+                        y += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                }
+                ctx.fillText(line, x, y); // Draw the last line
+            }
+
+            createTextLabel(text, x, y, z, color = 0xffffff, scale = 1.0) {
+                // Create a canvas to render text
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.width = 256;
+                canvas.height = 64;
+                
+                // Set font and style
+                context.font = 'Bold 18px UIFont, Arial';
+                context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+                context.textAlign = 'center';
+                context.textBaseline = 'middle';
+                
+                // Clear and draw text
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                // context.fillText(text, canvas.width / 2, canvas.height / 2);
+                this.wrapText(context, text, canvas.width / 2, canvas.height / 2, canvas.width - 22, 26);
+                
+                // Create texture from canvas
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.needsUpdate = true;
+                
+                // Create sprite material and sprite
+                const material = new THREE.SpriteMaterial({ 
+                    map: texture,
+                    transparent: true,
+                    alphaTest: 0.1
+                });
+                
+                const sprite = new THREE.Sprite(material);
+                sprite.position.set(x, y, z);
+                sprite.scale.set(scale * 2, scale * 0.5, 1);
+                
+                this.scene.add(sprite);
+            }
+            
+            animate() {
+                this.animationId = requestAnimationFrame(this.animate.bind(this));
+                
+                // Auto-rotate camera for 3D modes if enabled
+                const autoRotate = document.getElementById('autoRotate').checked;
+                if ((this.currentMode === '3d' || this.currentMode === '4d' || this.currentMode === '2d-array') && autoRotate) {
+                    const time = Date.now() * 0.0005;
+                    const distance = 6; // Consistent with manual control distance
+                    
+                    this.camera.position.x = Math.cos(time) * distance;
+                    this.camera.position.z = Math.sin(time) * distance;
+                    this.camera.lookAt(this.scene.position);
+                }
+                
+                this.renderer.render(this.scene, this.camera);
+            }
+            
+            exportPNG() {
+                if (!this.renderer) {
+                    this.updateStatus('ERROR: NO VISUALIZATION TO EXPORT');
+                    return;
+                }
+                
+                // Render current frame to canvas
+                this.renderer.render(this.scene, this.camera);
+                
+                // Create download link
+                const canvas = this.renderer.domElement;
+                const link = document.createElement('a');
+                link.download = `dropviz_export_${Date.now()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                this.updateStatus('PNG EXPORT COMPLETE');
+            }
+            
+            exportMesh() {
+                if (!this.scene || this.scene.children.length <= 2) {
+                    this.updateStatus('ERROR: NO 3D DATA TO EXPORT');
+                    return;
+                }
+                
+                // Generate OBJ format data
+                let objData = '# DropViz 3D Export\n';
+                objData += `# Generated: ${new Date().toISOString()}\n\n`;
+                
+                // Export point cloud as vertices
+                this.scene.children.forEach((child, index) => {
+                    if (child instanceof THREE.Points) {
+                        const positions = child.geometry.attributes.position.array;
+                        for (let i = 0; i < positions.length; i += 3) {
+                            objData += `v ${positions[i]} ${positions[i + 1]} ${positions[i + 2]}\n`;
+                        }
+                    }
+                });
+                
+                // Create download
+                const blob = new Blob([objData], { type: 'text/plain' });
+                const link = document.createElement('a');
+                link.download = `dropviz_mesh_${Date.now()}.obj`;
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                
+                this.updateStatus('3D MESH EXPORT COMPLETE');
+            }
+            
+            exportGIF() {
+                if (this.currentMode !== '4d') {
+                    this.updateStatus('ERROR: GIF EXPORT ONLY AVAILABLE IN 4D MODE');
+                    return;
+                }
+                
+                this.updateStatus('LOADING GIF ENCODER...');
+                
+                // Load gif.js library dynamically
+                if (!window.GIF) {
+                    const script = document.createElement('script');
+                    script.src = 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.min.js';
+                    script.onload = () => {
+                        this.startGIFCapture();
+                    };
+                    script.onerror = () => {
+                        this.updateStatus('ERROR: FAILED TO LOAD GIF ENCODER - Using fallback method');
+                        this.fallbackGIFExport();
+                    };
+                    document.head.appendChild(script);
+                } else {
+                    this.startGIFCapture();
+                }
+            }
+            
+            startGIFCapture() {
+                this.updateStatus('STARTING GIF CAPTURE...');
+                
+                // Pause animation temporarily
+                const wasAnimating = !!this.animate4DTimeout;
+                if (wasAnimating) {
+                    clearTimeout(this.animate4DTimeout);
+                    this.animate4DTimeout = null;
+                }
+                
+                // Get animation data
+                const timeDim = document.getElementById('timeDimension').value;
+                const xDim = document.getElementById('xDimension').value;
+                const yDim = document.getElementById('yDimension').value;
+                const zDim = document.getElementById('zDimension').value;
+                
+                if (!timeDim || timeDim === 'Select dimension...') {
+                    this.updateStatus('ERROR: TIME DIMENSION REQUIRED FOR GIF EXPORT');
+                    return;
+                }
+                
+                // Group data by time dimension
+                const timeGroups = {};
+                this.data.forEach(row => {
+                    const timeValue = row[timeDim];
+                    if (timeValue !== null && timeValue !== undefined) {
+                        if (!timeGroups[timeValue]) {
+                            timeGroups[timeValue] = [];
+                        }
+                        timeGroups[timeValue].push(row);
+                    }
+                });
+                
+                const timeKeys = Object.keys(timeGroups).sort((a, b) => {
+                    const aNum = parseFloat(a);
+                    const bNum = parseFloat(b);
+                    if (!isNaN(aNum) && !isNaN(bNum)) {
+                        return aNum - bNum;
+                    }
+                    return a.localeCompare(b);
+                });
+                
+                if (timeKeys.length === 0) {
+                    this.updateStatus('ERROR: NO TIME DATA FOUND');
+                    return;
+                }
+                
+                // Pre-calculate data bounds
+                const xData = this.processDataDimension(this.data, xDim);
+                const yData = this.processDataDimension(this.data, yDim);
+                const zData = this.processDataDimension(this.data, zDim);
+                
+                // Create GIF encoder
+                const canvas = this.renderer.domElement;
+                const gif = new GIF({
+                    workers: 2,
+                    quality: 10,
+                    width: canvas.width,
+                    height: canvas.height,
+                    workerScript: 'https://cdn.jsdelivr.net/npm/gif.js@0.2.0/dist/gif.worker.js'
+                });
+                
+                let frameIndex = 0;
+                const captureFrameCount = Math.min(timeKeys.length, 20); // Max 20 frames
+                
+                const captureFrame = () => {
+                    // Clear particles and create frame
+                    if (this.particleSystem) {
+                        // Reset particle system
+                        const geometry = this.particleSystem.geometry;
+                        const lifetimes = geometry.attributes.lifetime.array;
+                        lifetimes.fill(-1);
+                        geometry.attributes.lifetime.needsUpdate = true;
+                    }
+                    
+                    // Add particles for current time slice
+                    const currentData = timeGroups[timeKeys[frameIndex]] || [];
+                    this.addParticles(currentData, xDim, yDim, zDim, timeDim, xData, yData, zData, 1000);
+                    
+                    // Render frame
+                    this.renderer.render(this.scene, this.camera);
+                    
+                    // Add frame to GIF
+                    gif.addFrame(canvas, {copy: true, delay: 300});
+                    
+                    frameIndex++;
+                    
+                    this.updateStatus(`CAPTURING FRAME ${frameIndex}/${captureFrameCount}...`);
+                    
+                    if (frameIndex < captureFrameCount) {
+                        setTimeout(captureFrame, 100);
+                    } else {
+                        this.renderGIF(gif, wasAnimating, xDim, yDim, zDim);
+                    }
+                };
+                
+                captureFrame();
+            }
+            
+            renderGIF(gif, wasAnimating, xDim, yDim, zDim) {
+                this.updateStatus('RENDERING GIF...');
+                
+                gif.on('finished', (blob) => {
+                    // Create download link
+                    const link = document.createElement('a');
+                    link.download = `datastar_animation_${Date.now()}.gif`;
+                    link.href = URL.createObjectURL(blob);
+                    link.click();
+                    
+                    this.updateStatus('GIF EXPORT COMPLETE');
+                    
+                    // Resume animation
+                    if (wasAnimating) {
+                        setTimeout(() => {
+                            this.create4DVisualization(xDim, yDim, zDim);
+                        }, 1000);
+                    }
+                });
+                
+                gif.on('progress', (p) => {
+                    this.updateStatus(`RENDERING GIF... ${Math.round(p * 100)}%`);
+                });
+                
+                gif.render();
+            }
+            
+            fallbackGIFExport() {
+                // Simple fallback: export current frame as PNG
+                this.updateStatus('FALLBACK: EXPORTING CURRENT FRAME AS PNG');
+                this.exportPNG();
+            }
+            
+            exportFilteredCSV() {
+                if (!this.data || this.data.length === 0) {
+                    this.updateStatus('ERROR: NO DATA TO EXPORT');
+                    return;
+                }
+                
+                // Create CSV content
+                let csvContent = this.headers.join(',') + '\n';
+                
+                this.data.forEach(row => {
+                    const rowData = this.headers.map(header => {
+                        let value = row[header];
+                        // Escape commas and quotes in CSV
+                        if (typeof value === 'string' && (value.includes(',') || value.includes('"'))) {
+                            value = `"${value.replace(/"/g, '""')}"`;
+                        }
+                        return value;
+                    });
+                    csvContent += rowData.join(',') + '\n';
+                });
+                
+                // Create download
+                const blob = new Blob([csvContent], { type: 'text/csv' });
+                const link = document.createElement('a');
+                link.download = `datastar_filtered_${Date.now()}.csv`;
+                link.href = URL.createObjectURL(blob);
+                link.click();
+                
+                this.updateStatus(`CSV EXPORT COMPLETE - ${this.data.length} RECORDS`);
+            }
+            
+            handleResize() {
+                const container = document.getElementById('canvasContainer');
+                const width = container.clientWidth;
+                const height = container.clientHeight;
+                
+                if (this.camera && this.renderer) {
+                    this.camera.aspect = width / height;
+                    this.camera.updateProjectionMatrix();
+                    this.renderer.setSize(width, height, false); // false to prevent CSS override
+                    this.renderer.setPixelRatio(window.devicePixelRatio);
+                    
+                    // Force canvas to maintain full size
+                    const canvas = this.renderer.domElement;
+                    canvas.style.width = '100%';
+                    canvas.style.height = '100%';
+                }
+                
+                // Update camera position for better viewport scaling
+                if (this.currentMode === '2d') {
+                    this.camera.position.set(0, 0, 4);
+                } else if (this.currentMode === '2d-array') {
+                    this.camera.position.set(0, 0, 20);
+                }
+                
+                // Trigger visualization update to recalculate scaling
+                this.updateVisualization();
+            }
+            
+            showLoading(show) {
+                const loading = document.getElementById('loadingIndicator');
+                loading.style.display = show ? 'block' : 'none';
+            }
+            
+            updateStatus(message) {
+                document.getElementById('statusText').textContent = message;
+            }
+        }
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', () => {
+            new DropViz();
+        });
+    </script>
+</body>
+</html>
