@@ -1,4 +1,4 @@
-# DataStar - Multidimensional Data Visualizer Terminal
+# DataStar - Multidimensional Data Analyzer
 
 <div align="center">
 
@@ -6,6 +6,8 @@
 ![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=for-the-badge&logo=javascript&logoColor=black)
 ![Three.js](https://img.shields.io/badge/Three.js-r128-000000?style=for-the-badge&logo=three.js&logoColor=white)
 ![WebGL](https://img.shields.io/badge/WebGL-2.0-990000?style=for-the-badge&logo=webgl&logoColor=white)
+
+![DataStar screenshot](screenshot.png)
 
 *A powerful, multidimensional data visualization platform developed by LATENT•SPACECRAFT, inspired by the artwork of Michael Okuda*
 
