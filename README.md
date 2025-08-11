@@ -8,42 +8,8 @@
 ![Three.js](https://img.shields.io/badge/Three.js-r128-000000?style=for-the-badge&logo=three.js&logoColor=white)
 ![WebGL](https://img.shields.io/badge/WebGL-2.0-990000?style=for-the-badge&logo=webgl&logoColor=white)
 
-<div class="gallery" style="position: relative; max-width: 600px; margin: 20px auto;">
-    <img src="assets/screenshot.png" alt="DataStar 3D Visualization" style="width: 100%; height: 400px; object-fit: cover; border-radius: 8px; display: block;" id="gallery-img-1">
-    <img src="assets/screenshot.png" alt="DataStar 4D Point Cloud (animated)" style="width: 100%; height: 400px; object-fit: cover; border-radius: 8px; display: none;" id="gallery-img-2">
-    <div>
-    <button class="nav prev" onclick="changeImage(-1)">‹</button>
-    <button class="nav next" onclick="changeImage(1)">›</button>
-    </div>
-</div>
-
-<script>
-let currentGalleryImage = 0;
-const galleryImages = document.querySelectorAll('[id^="gallery-img-"]');
-const galleryCounter = document.getElementById('gallery-counter');
-
-function showGalleryImage(index) {
-    galleryImages.forEach((img, i) => {
-        img.style.display = i === index ? 'block' : 'none';
-    });
-    if (galleryCounter) {
-        galleryCounter.textContent = `${index + 1} / ${galleryImages.length}`;
-    }
-}
-
-function changeGalleryImage(direction) {
-    currentGalleryImage += direction;
-    if (currentGalleryImage < 0) currentGalleryImage = galleryImages.length - 1;
-    if (currentGalleryImage >= galleryImages.length) currentGalleryImage = 0;
-    showGalleryImage(currentGalleryImage);
-}
-
-// Keyboard navigation
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowLeft') changeGalleryImage(-1);
-    if (e.key === 'ArrowRight') changeGalleryImage(1);
-});
-</script>
+<img src="assets/screenshot.png" alt="drawing" width="512"/>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<img src="assets/4d-ds.gif" alt="drawing" width="350"/>
 
 *A powerful, multidimensional data visualization platform developed by LATENT•SPACECRAFT, inspired by Michael Okuda and Vintage Audio*
 
@@ -55,7 +21,7 @@ DataStar is a browser-based data visualization terminal that transforms CSV data
 
 ### ✨ Key Features
 
-- **🎨 Retrofuturistic UI**: Inspired by Star Trek: TNG interface
+- **🎨 Retrofuturistic UI**: Inspired by 1970s space exploration
 - **📊 Multiple Visualization Modes**: 2D plots, interactive 2D arrays, 3D point clouds, 4D time-lapse animations
 - **🌈 6-Dimensional Support**: X, Y, Z positioning + Color, Size, and Time dimensions
 - **🖱️ Interactive Controls**: Manual camera rotation/zoom for 2D arrays, 3D, and 4D modes
